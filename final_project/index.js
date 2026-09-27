@@ -4,14 +4,39 @@ const session = require('express-session')
 const customer_routes = require('./router/auth_users.js').authenticated;
 const genl_routes = require('./router/general.js').general;
 
+let users = [];                             // registered users
+
+const doesUserExist = (username) => {
+    let filteredUser = users.filter((user) => (user.username === username));
+    return filteredUser.length > 0;         // return a boolean.
+};
+
+const isRegistered = (username, password) => {
+    let filteredUser = users.filter((user) => (user.username === username && user.password === password));
+    return filteredUser.length > 0;         // return a boolean.
+};
+
 const app = express();
 
 app.use(express.json());
 
 app.use("/customer", session({ secret: "fingerprint_customer", resave: true, saveUninitialized: true }))
 
-app.use("/customer/auth/*", function auth(req, res, next) {
+// Autentication -- jwt.verify()
+app.use("/customer", function auth(req, res, next) {
     //Write the authenication mechanism here
+    if (req.session.authorization) {
+        let token = req.session.authorization['accessToken'];
+        jwt.verify(token, "access", (err, payload) => {
+            if (!err) {     // logueado y registrado
+                req.user = payload;
+                return next();
+            }               // registrado
+            return res.status(403).json({ message: "Usuario sin autenticar o expirado. Favor de log-in." })    // login    == jwt.sign
+        })
+    } else {                // sin registrar
+        return res.status(403).json({ message: "Cuenta no registrada. Favor registrarse." })                    // register == POST userdata
+    }
 });
 
 const PORT = 5000;
