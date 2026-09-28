@@ -17,8 +17,18 @@ const filtradorDeLibros = (req, res, { tipoDeFiltro: queryType }) => {
 
 
 public_users.post("/register", (req, res) => {
-    //Write your code here
-    return res.status(300).json({ message: "Yet to be implemented" });
+    const { username, password } = req.body;
+    if (username && password) {
+        if (password.length < 8) {
+            return res.status(400).json({ message: `Contraseña insegura. Incluye 8 o más caracteres.` });
+        }
+        if (isValid(username)) {                    // ¿es nuevo el user?
+            users.push({ username, password });
+            return res.status(200).json({ message: `Usuario '${username}' registrado exitosamente.` });
+        }
+        return res.status(409).json({ message: `El username '${username}' ya está en uso. Elija uno distinto.` })
+    }
+    return res.status(400).json({ message: "No ingresó el 'username' o el 'password'. Complete las credenciales e intente nuevamente." });
 });
 
 // Get the book list available in the shop
