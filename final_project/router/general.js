@@ -1,8 +1,11 @@
 const express = require('express');
-let books = require("./booksdb.js");
-let isValid = require("./auth_users.js").isValid;
-let users = require("./auth_users.js").users;
 const public_users = express.Router();
+
+// db2
+let books = require("./booksdb.js");
+let users = require("./auth_users.js").users;
+
+const doesUserExist = require("./auth_users.js").doesUserExist;
 
 const filtradorDeLibros = (req, res, { tipoDeFiltro: queryType }) => {
     // const queryType = "author";                                  // String     : tipoDeFiltro
@@ -22,7 +25,7 @@ public_users.post("/register", (req, res) => {
         if (password.length < 8) {
             return res.status(400).json({ message: `Contraseña insegura. Incluye 8 o más caracteres.` });
         }
-        if (isValid(username)) {                    // ¿es nuevo el user?
+        if (!doesUserExist(username)) {                    // ¿es nuevo el user?
             users.push({ username, password });
             return res.status(200).json({ message: `Usuario '${username}' registrado exitosamente.` });
         }
