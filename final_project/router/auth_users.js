@@ -1,3 +1,5 @@
+// Auth module ---------------------
+
 const express = require('express');
 const jwt = require('jsonwebtoken');
 let books = require("./booksdb.js");
@@ -35,8 +37,15 @@ regd_users.post("/login", (req, res) => {
 
 // Add a book review
 regd_users.put("/auth/review/:isbn", (req, res) => {
-    //Write your code here
-    return res.status(300).json({ message: "Yet to be implemented" });
+    const { username } = req.session.authorization;
+    const { isbn } = req.params;
+    const newReview = String(req.body.review).trim();
+
+    const libroExiste = books[isbn];
+    if (!libroExiste) { return res.status(404).json({ message: `Libro no encontrado. ISBN '${isbn}' inválido.` }); }
+    if (!newReview) { return res.status(400).json({ message: `Error: Su reseña no puede estar vacía.` }); }
+    books[isbn].reviews = { ...books[isbn].reviews, [username]: newReview };
+    return res.status(200).json({ message: `Reseña de ${username}, actualizada exitosamente. Puede ver las últimas reseñas accediendo a '/review/:isbn'` });
 });
 
 module.exports.authenticated = regd_users;
