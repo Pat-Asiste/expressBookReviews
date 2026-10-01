@@ -34,9 +34,25 @@ public_users.post("/register", (req, res) => {
     return res.status(400).json({ message: "No ingresó el 'username' o el 'password'. Complete las credenciales e intente nuevamente." });
 });
 
+function getDB2() {
+    return new Promise((resolve, reject) => {
+        setTimeout(() => {
+            if (true) { resolve(books) }
+            else { reject("Error conectando con la base de datos.") };
+        }, 10);
+    });
+}
+
 // Get the book list available in the shop
-public_users.get('/', function (req, res) {
-    return res.status(200).json(books);
+public_users.get('/', async function (req, res) {       // ASYNC callbackFn
+    console.log("respondiendo..OK");
+    try {
+        const libros = await getDB2();
+        return res.status(200).json(libros);
+    } catch (err) {
+        return res.status(500).json({ Error: err });
+    }
+
 });
 
 // Get book details based on ISBN
