@@ -7,15 +7,38 @@ let users = require("./auth_users.js").users;
 
 const doesUserExist = require("./auth_users.js").doesUserExist;
 
-const filtradorDeLibros = (req, res, { tipoDeFiltro: queryType }) => {
-    // const queryType = "author";                                  // String     : tipoDeFiltro
+function getDB2() {
+    return new Promise((resolve, reject) => {                               // new Promise -- el closure evita: 'error' && 'global scope' al iniciar el servidor :) .
+        setTimeout(() => {
+            if (books) { resolve(books) }
+            else { reject("Error conectando con la base de datos."); };
+        }, 1000);
+    })
+}
 
-    const buscado = req.params[queryType]?.toLowerCase();           // String     : a consultar     // siempre valdrá true, OJO.
-    const libros = Object.values(books);                            // Array[{},] : libros db2
-    let filteredBooks = libros.filter((book) => (book[queryType]?.toLowerCase().includes(buscado)));
-    return filteredBooks.length > 0
-        ? res.status(200).json(filteredBooks)                       // Array[{},] : output
-        : res.status(404).json({ message: `No hay libros para mostrar, ${queryType} no encontrado.` });
+function getArrayDB2() {
+    return new Promise((resolve, reject) => {
+        setTimeout(() => {
+            if (books) { resolve(Object.values(books)) }                                            // XD
+            else { reject("Error conectando con la base de datos.") };
+        }, 10);
+    })
+}
+
+async function filtradorDeLibros(req, res, { tipoDeFiltro: queryType }) {
+    // const queryType = "author";                                      // String     : tipoDeFiltro
+    try {
+        const buscado = req.params[queryType]?.toLowerCase();           // variable 'querytype'. Es la única de la fn async.
+
+        const libros = await getArrayDB2();                               // Array[{},] : libros db2
+        let filteredBooks = libros.filter((book) => (book[queryType]?.toLowerCase().includes(buscado)));
+        filteredBooks.length > 0
+            ? res.status(200).json(filteredBooks)                       // Array[{},] : output
+            : res.status(404).json({ message: `No hay libros para mostrar, ${queryType} no encontrado.` });
+    }
+    catch (err) {
+        res.status(404).json({ Error: err })
+    }
 };
 
 
@@ -34,20 +57,12 @@ public_users.post("/register", (req, res) => {
     return res.status(400).json({ message: "No ingresó el 'username' o el 'password'. Complete las credenciales e intente nuevamente." });
 });
 
-function getDB2() {
-    return new Promise((resolve, reject) => {
-        setTimeout(() => {
-            if (true) { resolve(books) }
-            else { reject("Error conectando con la base de datos.") };
-        }, 10);
-    });
-}
 
 // Get the book list available in the shop
 public_users.get('/', async function (req, res) {       // ASYNC callbackFn
     console.log("respondiendo..OK");
     try {
-        const libros = await getDB2();
+        const libros = await getDB2();                  // new Promise
         return res.status(200).json(libros);
     } catch (err) {
         return res.status(500).json({ Error: err });
@@ -56,32 +71,55 @@ public_users.get('/', async function (req, res) {       // ASYNC callbackFn
 });
 
 // Get book details based on ISBN
-public_users.get('/isbn/:isbn', function (req, res) {
-    let filteredBook = books[req.params.isbn];
-    return filteredBook
-        ? res.status(200).json(filteredBook)
-        : res.status(404).json({ message: `No encontrado. ISBN '${id}' inválido.` });
+public_users.get('/isbn/:isbn', async function (req, res) {
+    try {
+        const isbn = req.params.isbn;
+        const libros = await getDB2();
+        return libros[isbn]
+            ? res.status(200).json(libros[isbn])
+            : res.status(404).json({ message: `No encontrado. ISBN '${isbn}' inválido.` });
+    } catch (err) {
+        return res.status(500).json({ Error: err });
+    }
+
+
 });
 
 // Get book details based on author
-public_users.get('/author/:author', function (req, res) {
-    filtradorDeLibros(req, res, { tipoDeFiltro: "author" });
+public_users.get('/author/:author', async function (req, res) {
+    try {
+        filtradorDeLibros(req, res, { tipoDeFiltro: "author" });
+    } catch {
+        return res.status(500).json({ Error: err });
+    }
+
 });
 
 // Get all books based on title
-public_users.get('/title/:title', function (req, res) {
-    filtradorDeLibros(req, res, { tipoDeFiltro: "title" });
+public_users.get('/title/:title', async function (req, res) {
+    try {
+        filtradorDeLibros(req, res, { tipoDeFiltro: "title" });
+    } catch {
+        return res.status(500).json({ Error: err });
+    }
 });
 
 //  Get book review
-public_users.get('/review/:isbn', function (req, res) {
-    let filteredBook = books[req.params.isbn];
-    if (filteredBook) {
-        return Object.values(filteredBook.reviews).length > 0
-            ? res.status(200).json(filteredBook.reviews)
-            : res.status(200).json({ message: `ISBN: '${req.params.isbn}'. El libro seleccionado aún no posee reviews.` });
+public_users.get('/review/:isbn', async function (req, res) {
+    try {
+        const isbn = req.params.isbn;
+        const libros = await getDB2();
+        let libro = libros[isbn];
+        if (libro) {
+            return Object.values(libro.reviews).length > 0
+                ? res.status(200).json(libro.reviews)
+                : res.status(200).json({ message: `ISBN: '${isbn}'. El libro seleccionado aún no posee reviews.` });
+        }
+        return res.status(404).json({ message: `No encontrado. ISBN '${isbn}' inválido.` });
+
+    } catch {
+        return res.status(500).json({ Error: err });
     }
-    return res.status(404).json({ message: `No encontrado. ISBN '${req.params.isbn}' inválido.` });
 });
 
 module.exports.general = public_users;
