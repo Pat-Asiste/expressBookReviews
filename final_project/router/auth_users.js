@@ -41,11 +41,18 @@ regd_users.put("/auth/review/:isbn", (req, res) => {
     const { isbn } = req.params;
     const newReview = String(req.body.review).trim();
 
-    const libroExiste = books[isbn];
-    if (!libroExiste) { return res.status(404).json({ message: `Libro no encontrado. ISBN '${isbn}' inválido.` }); }
+    const libro = books[isbn];
+    if (!libro) { return res.status(404).json({ message: `Libro no encontrado. ISBN '${isbn}' inválido.` }); }
     if (!newReview) { return res.status(400).json({ message: `Error: Su reseña no puede estar vacía.` }); }
     books[isbn].reviews = { ...books[isbn].reviews, [username]: newReview };
-    return res.status(200).json({ message: `Reseña de ${username}, actualizada exitosamente. Puede ver las últimas reseñas accediendo a '/review/:isbn'` });
+    return res.status(200).json({
+        message: `Reseña de ${username}, actualizada exitosamente. Puedes ver las últimas reseñas accediendo a '/review/:isbn'`,
+        book_info: {
+            isbn: isbn,
+            title: libro.title,
+            reviews: libro.reviews
+        }
+    });
 });
 
 // Borrar la review
@@ -53,10 +60,18 @@ regd_users.delete("/auth/review/:isbn", (req, res) => {
     const { username } = req.session.authorization;
     const { isbn } = req.params;
 
-    const libroExiste = books[isbn];
-    if (!libroExiste) { return res.status(404).json({ message: `Libro no encontrado. ISBN '${isbn}' inválido.` }); }
+    const libro = books[isbn];
+    if (!libro) { return res.status(404).json({ message: `Libro no encontrado. ISBN '${isbn}' inválido.` }); }
     delete books[isbn].reviews[username];
-    return res.status(200).json({ message: `Ha borrado su reseña del sistema.` });
+    return res.status(200).json({
+        message: `Review para ISBN ${isbn} borrada exitosamente.'.`,
+        user:[username],
+        book_info: {
+            isbn: isbn,
+            title: libro.title,
+            reviews: libro.reviews
+        }
+    });
 });
 
 module.exports.authenticated = regd_users;

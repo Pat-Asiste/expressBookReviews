@@ -19,25 +19,28 @@ function getDB2() {
 function getArrayDB2() {
     return new Promise((resolve, reject) => {
         setTimeout(() => {
-            if (books) { resolve(Object.values(books)) }                                            // XD
+            if (books) { resolve(Object.entries(books)) }                                            // XD
             else { reject("Error conectando con la base de datos.") };
         }, 10);
     })
 }
 
-async function filtradorDeLibros(req, res, { tipoDeFiltro: queryType }) {
+async function filtradorDeLibros(req, res, next, { tipoDeFiltro: queryType }) {
     // const queryType = "author";                                      // String     : tipoDeFiltro
     try {
+        if (!queryType) { return res.status(404).json({ message: `El valor a consultar no debe estar en blanco.` }) }
+
         const buscado = req.params[queryType]?.toLowerCase();           // variable 'querytype'. Es la única de la fn async.
 
-        const libros = await getArrayDB2();                               // Array[{},] : libros db2
-        let filteredBooks = libros.filter((book) => (book[queryType]?.toLowerCase().includes(buscado)));
-        filteredBooks.length > 0
+        const libros = await getArrayDB2();                               // Array[[k,v],] : libros db2
+        let arrayFiltrado = libros.filter(([key, book]) => (book[queryType]?.toLowerCase().includes(buscado)));
+        let filteredBooks = arrayFiltrado.map(([isbn, book]) => ({ isbn, ...book }));
+        return filteredBooks.length > 0
             ? res.status(200).json(filteredBooks)                       // Array[{},] : output
             : res.status(404).json({ message: `No hay libros para mostrar, ${queryType} no encontrado.` });
     }
     catch (err) {
-        res.status(404).json({ Error: err })
+        next(err);
     }
 };
 
@@ -59,53 +62,54 @@ public_users.post("/register", (req, res) => {
 
 
 // Get the book list available in the shop
-public_users.get('/', async function (req, res) {       // ASYNC callbackFn
+public_users.get('/', async function (req, res, next) {       // ASYNC callbackFn
     console.log("respondiendo..OK");
     try {
         const libros = await getDB2();                  // new Promise
         return res.status(200).json(libros);
     } catch (err) {
-        return res.status(500).json({ Error: err });
+        next(err);
+
     }
 
 });
 
 // Get book details based on ISBN
-public_users.get('/isbn/:isbn', async function (req, res) {
+public_users.get('/isbn/:isbn', async function (req, res, next) {
     try {
         const isbn = req.params.isbn;
         const libros = await getDB2();
         return libros[isbn]
-            ? res.status(200).json(libros[isbn])
+            ? res.status(200).json({ isbn: [isbn], Resultado: libros[isbn] })
             : res.status(404).json({ message: `No encontrado. ISBN '${isbn}' inválido.` });
     } catch (err) {
-        return res.status(500).json({ Error: err });
+        next(err);
     }
 
 
 });
 
 // Get book details based on author
-public_users.get('/author/:author', async function (req, res) {
+public_users.get('/author/:author', async function (req, res, next) {
     try {
-        filtradorDeLibros(req, res, { tipoDeFiltro: "author" });
-    } catch {
-        return res.status(500).json({ Error: err });
+        filtradorDeLibros(req, res, next, { tipoDeFiltro: "author" });
+    } catch (err) {
+        next(err);
     }
 
 });
 
 // Get all books based on title
-public_users.get('/title/:title', async function (req, res) {
+public_users.get('/title/:title', async function (req, res, next) {
     try {
-        filtradorDeLibros(req, res, { tipoDeFiltro: "title" });
-    } catch {
-        return res.status(500).json({ Error: err });
+        filtradorDeLibros(req, res, next, { tipoDeFiltro: "title" });
+    } catch (err) {
+        next(err);
     }
 });
 
 //  Get book review
-public_users.get('/review/:isbn', async function (req, res) {
+public_users.get('/review/:isbn', async function (req, res, next) {
     try {
         const isbn = req.params.isbn;
         const libros = await getDB2();
@@ -117,8 +121,8 @@ public_users.get('/review/:isbn', async function (req, res) {
         }
         return res.status(404).json({ message: `No encontrado. ISBN '${isbn}' inválido.` });
 
-    } catch {
-        return res.status(500).json({ Error: err });
+    } catch (err) {
+        next(err);
     }
 });
 

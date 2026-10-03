@@ -36,4 +36,10 @@ const PORT = 5000;
 app.use("/customer", customer_routes);
 app.use("/", genl_routes);
 
+app.use((err, req, res, next) => {
+    console.log(JSON.stringify({ Error: err, details: err.message }, null, 2)); // error details are visible for developer.
+    res.status(500).json({ Error: err });                                       // error details are Not visible for users.
+
+});
+
 app.listen(PORT, () => console.log(`Server is running on port ${PORT}.`));
